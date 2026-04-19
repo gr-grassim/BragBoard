@@ -1,0 +1,23 @@
+# --- Frontend (Node/React) ---
+node_modules/
+dist/
+build/
+.npm
+.env.local
+
+# --- Backend (Python/FastAPI) ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.env
+
+# --- Database ---
+*.db
+*.sqlite3
+
+# --- OS/System Files ---
+.DS_Store
+Thumbs.db
