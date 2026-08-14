@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import { Trophy, Medal, Star, Flame } from 'lucide-react';
 
 export default function Leaderboard() {
@@ -10,10 +11,8 @@ export default function Leaderboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('http://127.0.0.1:8000/leaderboard', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if(response.ok) setStats(await response.json());
+                const response = await api.get('/leaderboard');
+                setStats(response.data);
             } catch (error) {
                 console.error("Leaderboard fetch error", error);
             } finally {
