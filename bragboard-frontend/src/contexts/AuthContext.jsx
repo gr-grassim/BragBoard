@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api, { setAuthToken } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -9,7 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetching user details.....
+  // Fetching user details using the centralized api client
   const fetchUser = async (authToken) => {
     if (!authToken) {
       setUser(null);
@@ -17,19 +18,12 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
-      const response = await fetch("http://127.0.0.1:8000/users/me", {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
-        //Token invalid
-        logout();
-      }
+      setAuthToken(authToken);
+      const response = await api.get("/users/me");
+      setUser(response.data);
     } catch (err) {
       console.error("Failed to fetch user:", err);
+      logout();
     } finally {
       setIsLoading(false);
     }
@@ -42,11 +36,13 @@ export const AuthProvider = ({ children }) => {
   // For Successful login
   const login = (newToken) => {
     localStorage.setItem("token", newToken);
+    setAuthToken(newToken);
     setToken(newToken);
   };
 
   const logout = () => {
     localStorage.removeItem("token");
+    setAuthToken(null);
     setToken(null);
     setUser(null);
     setIsLoading(false);
@@ -58,7 +54,6 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     logout,
-
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
