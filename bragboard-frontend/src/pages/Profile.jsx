@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import { Mail, Briefcase, Shield, Edit2, Save, X, Loader2, Camera } from 'lucide-react';
 
 export default function Profile() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -30,14 +31,13 @@ export default function Profile() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/users/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) window.location.reload(); 
-    } catch (error) { console.error(error); } 
-    finally { setIsLoading(false); }
+      await api.patch('/users/me', formData);
+      window.location.reload(); 
+    } catch (error) { 
+      console.error(error); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   // NEW: Handle Avatar Upload
@@ -50,14 +50,13 @@ export default function Profile() {
     uploadData.append('avatar', file);
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/users/me/avatar', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: uploadData
-        });
-        if (response.ok) window.location.reload();
-    } catch (error) { console.error("Avatar upload failed", error); }
-    finally { setIsUploading(false); }
+        await api.post('/users/me/avatar', uploadData);
+        window.location.reload();
+    } catch (error) { 
+        console.error("Avatar upload failed", error); 
+    } finally { 
+        setIsUploading(false); 
+    }
   };
 
   return (
