@@ -1,7 +1,9 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://postgres:Postgre123@localhost/bragboard"
+# Pulls the Render environment variable, falls back to localhost for local testing
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:Postgre123@localhost/bragboard")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -15,4 +17,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
