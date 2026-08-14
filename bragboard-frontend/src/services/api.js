@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Pulls the Vercel environment variable, falls back to local URL for testing
-const API_URL = import.meta.env.VITE_API_URL || 'https://bragboard-api-oo4v.onrender.com' || 'http://127.0.0.1:8000';
+const API_URL = 'https://bragboard-api-oo4v.onrender.com';
 
 const api = axios.create({
   baseURL: API_URL,
