@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import { MessageSquare, Heart, Clock, User as UserIcon, ThumbsUp, Star, Send, Trash2, Edit2, X, Check, Flag, AlertTriangle } from 'lucide-react';
 
 export default function Feed({ departmentFilter }) {
@@ -10,16 +11,19 @@ export default function Feed({ departmentFilter }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [editingShoutout, setEditingShoutout] = useState(null); 
-  const [editingComment, setEditingComment] = useState(null);   
+  const [editingComment, setEditingComment] = useState(null);    
   const [reportingShoutout, setReportingShoutout] = useState(null); 
 
   useEffect(() => {
     const fetchShoutouts = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/shoutouts', { headers: { Authorization: `Bearer ${token}` } });
-        if (response.ok) setShoutouts(await response.json());
-      } catch (error) { console.error(error); } 
-      finally { setLoading(false); }
+        const response = await api.get('/shoutouts');
+        setShoutouts(response.data);
+      } catch (error) { 
+        console.error("Failed to fetch shoutouts:", error); 
+      } finally { 
+        setLoading(false); 
+      }
     };
     fetchShoutouts();
   }, [token, refreshKey]); 
@@ -31,39 +35,73 @@ export default function Feed({ departmentFilter }) {
 
   const handleReaction = async (shoutoutId, type) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/shoutouts/${shoutoutId}/react`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ type })
-      });
-      if (response.ok) setRefreshKey(prev => prev + 1); 
-    } catch (error) { console.error(error); }
+      await api.post(`/shoutouts/${shoutoutId}/react`, { type });
+      setRefreshKey(prev => prev + 1); 
+    } catch (error) { 
+      console.error("Reaction failed:", error); 
+    }
   };
 
   const handlePostComment = async (shoutoutId) => {
     const content = commentInputs[shoutoutId];
     if (!content || !content.trim()) return;
     try {
-        const response = await fetch(`http://127.0.0.1:8000/shoutouts/${shoutoutId}/comments`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ content })
-        });
-        if (response.ok) { setCommentInputs(prev => ({ ...prev, [shoutoutId]: '' })); setRefreshKey(prev => prev + 1); }
-    } catch (error) { console.error(error); }
+        await api.post(`/shoutouts/${shoutoutId}/comments`, { content });
+        setCommentInputs(prev => ({ ...prev, [shoutoutId]: '' })); 
+        setRefreshKey(prev => prev + 1); 
+    } catch (error) { 
+      console.error("Failed to post comment:", error); 
+    }
   };
 
   const deleteShoutout = async (id) => {
       if(!confirm("Are you sure you want to delete this post?")) return;
-      try { await fetch(`http://127.0.0.1:8000/shoutouts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); setRefreshKey(prev => prev + 1); } catch(e) { console.error(e); }
+      try { 
+        await api.delete(`/shoutouts/${id}`); 
+        setRefreshKey(prev => prev + 1); 
+      } catch(e) { 
+        console.error("Failed to delete shoutout:", e); 
+      }
   };
 
   const updateShoutout = async () => {
-      try { await fetch(`http://127.0.0.1:8000/shoutouts/${editingShoutout.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ content: editingShoutout.content }) }); setEditingShoutout(null); setRefreshKey(prev => prev + 1); } catch(e) { console.error(e); }
+      try { 
+        await api.patch(`/shoutouts/${editingShoutout.id}`, { content: editingShoutout.content }); 
+        setEditingShoutout(null); 
+        setRefreshKey(prev => prev + 1); 
+      } catch(e) { 
+        console.error("Failed to update shoutout:", e); 
+      }
   };
 
-  const deleteComment = async (id) => { if(!confirm("Delete this comment?")) return; try { await fetch(`http://127.0.0.1:8000/comments/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); setRefreshKey(prev => prev + 1); } catch(e) { console.error(e); } };
+  const deleteComment = async (id) => { 
+    if(!confirm("Delete this comment?")) return; 
+    try { 
+      await api.delete(`/comments/${id}`); 
+      setRefreshKey(prev => prev + 1); 
+    } catch(e) { 
+      console.error("Failed to delete comment:", e); 
+    } 
+  };
 
-  const updateComment = async () => { try { await fetch(`http://127.0.0.1:8000/comments/${editingComment.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ content: editingComment.content }) }); setEditingComment(null); setRefreshKey(prev => prev + 1); } catch(e) { console.error(e); } };
+  const updateComment = async () => { 
+    try { 
+      await api.patch(`/comments/${editingComment.id}`, { content: editingComment.content }); 
+      setEditingComment(null); 
+      setRefreshKey(prev => prev + 1); 
+    } catch(e) { 
+      console.error("Failed to update comment:", e); 
+    } 
+  };
 
   const submitReport = async (shoutoutId, reason) => {
-    try { await fetch(`http://127.0.0.1:8000/shoutouts/${shoutoutId}/report`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ reason }) }); alert("Report submitted to Admins."); setReportingShoutout(null); } catch(e) { console.error(e); }
+    try { 
+      await api.post(`/shoutouts/${shoutoutId}/report`, { reason }); 
+      alert("Report submitted to Admins."); 
+      setReportingShoutout(null); 
+    } catch(e) { 
+      console.error("Failed to submit report:", e); 
+    }
   };
 
   const handleInputChange = (shoutoutId, text) => setCommentInputs(prev => ({ ...prev, [shoutoutId]: text }));
@@ -115,7 +153,7 @@ export default function Feed({ departmentFilter }) {
 
             <div className="flex items-start gap-4 relative z-0">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center shadow-inner text-stone-400 shrink-0 font-bold text-xl overflow-hidden">
-                 {shoutout.sender.avatar_path ? <img src={shoutout.sender.avatar_path} alt={shoutout.sender.name} className="w-full h-full object-cover" /> : shoutout.sender.name.charAt(0)}
+                   {shoutout.sender.avatar_path ? <img src={shoutout.sender.avatar_path} alt={shoutout.sender.name} className="w-full h-full object-cover" /> : shoutout.sender.name.charAt(0)}
               </div>
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2 mb-2 leading-relaxed">
