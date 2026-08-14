@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import { Shield, TrendingUp, Users, AlertTriangle, CheckCircle, Trash2, Download } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -11,34 +12,42 @@ export default function AdminDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const statsRes = await fetch('http://127.0.0.1:8000/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
-                if(statsRes.ok) setStats(await statsRes.json());
-                const reportsRes = await fetch('http://127.0.0.1:8000/admin/reports', { headers: { Authorization: `Bearer ${token}` } });
-                if(reportsRes.ok) setReports(await reportsRes.json());
-            } catch (error) { console.error(error); } finally { setLoading(false); }
+                const statsRes = await api.get('/admin/stats');
+                setStats(statsRes.data);
+                const reportsRes = await api.get('/admin/reports');
+                setReports(reportsRes.data);
+            } catch (error) { 
+                console.error("Failed to load admin dashboard data:", error); 
+            } finally { 
+                setLoading(false); 
+            }
         };
         fetchData();
     }, [token]);
 
     const handleDismiss = async (reportId) => {
         try {
-            await fetch(`http://127.0.0.1:8000/admin/reports/${reportId}/resolve`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+            await api.post(`/admin/reports/${reportId}/resolve`);
             setReports(reports.filter(r => r.id !== reportId));
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error("Failed to resolve report:", e); 
+        }
     };
 
     const handleDeletePost = async (shoutoutId, reportId) => {
         if(!confirm("Are you sure?")) return;
         try {
-            await fetch(`http://127.0.0.1:8000/shoutouts/${shoutoutId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+            await api.delete(`/shoutouts/${shoutoutId}`);
             setReports(reports.filter(r => r.id !== reportId));
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error("Failed to delete post:", e); 
+        }
     };
 
     const downloadCSV = async (endpoint, filename) => {
         try {
-            const response = await fetch(`http://127.0.0.1:8000${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
-            const blob = await response.blob();
+            const response = await api.get(endpoint, { responseType: 'blob' });
+            const blob = new Blob([response.data]);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -46,7 +55,10 @@ export default function AdminDashboard() {
             document.body.appendChild(a);
             a.click();
             a.remove();
-        } catch(e) { console.error("Download failed", e); }
+            window.URL.revokeObjectURL(url);
+        } catch(e) { 
+            console.error("CSV Download failed", e); 
+        }
     };
 
     if (loading) return <div className="p-10 text-center">Loading...</div>;
