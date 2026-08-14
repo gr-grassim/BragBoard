@@ -17,15 +17,15 @@ from passlib.context import CryptContext
 import models, schemas
 from database import engine, get_db
 
-# Dynamic Base URL for image uploads (Render automatically provides RENDER_EXTERNAL_URL)
-BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
+# Dynamic Base URL for image uploads (Safely sanitized to prevent double slashes)
+BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000").rstrip("/")
 
 # Creation of Tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# FIX 1: Explicitly pass ["*"] to allow all domains
+# Explicitly pass ["*"] to allow all frontend domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -102,7 +102,6 @@ def upload_avatar(avatar: UploadFile = File(...), db: Session = Depends(get_db),
     file_location = f"static/images/{safe_filename}"
     with open(file_location, "wb+") as file_object: shutil.copyfileobj(avatar.file, file_object)
     
-    # FIX 2: Use dynamic BASE_URL instead of localhost
     current_user.avatar_path = f"{BASE_URL}/{file_location}"
     db.add(current_user)
     db.commit()
@@ -125,7 +124,6 @@ def create_shoutout(content: str = Form(...), receiver_ids: str = Form(...), ima
         file_location = f"static/images/{safe_filename}"
         with open(file_location, "wb+") as file_object: shutil.copyfileobj(image.file, file_object)
         
-        # FIX 2: Use dynamic BASE_URL instead of localhost
         image_url = f"{BASE_URL}/{file_location}"
     
     recipient_ids = [int(id) for id in receiver_ids.split(",") if id.strip()]
@@ -240,15 +238,13 @@ def resolve_report(report_id: int, db: Session = Depends(get_db), current_user: 
     return {"message": "Report resolved"}
 
 
-# ---Public Leaderboard Endpoint (Accessible to everyone)---
+# --- Leaderboard Endpoint ---
 @app.get("/leaderboard", response_model=schemas.AdminStats)
 def get_public_leaderboard(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # 1. Top Contributors (Most shoutouts sent)
     top_senders = db.query(models.User.name, func.count(models.Shoutout.id).label('count'))\
         .join(models.Shoutout, models.User.id == models.Shoutout.sender_id)\
         .group_by(models.User.name).order_by(desc('count')).limit(5).all()
         
-    # 2. Most Tagged (Most shoutouts received)
     most_received = db.query(models.User.name, func.count(models.shoutout_recipients.c.shoutout_id).label('count'))\
         .join(models.shoutout_recipients, models.User.id == models.shoutout_recipients.c.user_id)\
         .group_by(models.User.name).order_by(desc('count')).limit(5).all()
@@ -258,7 +254,6 @@ def get_public_leaderboard(db: Session = Depends(get_db), current_user: models.U
         "most_tagged": [{"name": name, "count": count} for name, count in most_received]
     }
 
-# Admin Stats (Re-uses the logic from Leaderboard, but restricted)
 @app.get("/admin/stats", response_model=schemas.AdminStats)
 def get_admin_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="Admin only")
@@ -271,15 +266,11 @@ def export_shoutouts_csv(db: Session = Depends(get_db), current_user: models.Use
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="Admin only")
     
     shoutouts = db.query(models.Shoutout).all()
-    
-    # Creating in-memory file
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Writeing Header
     writer.writerow(['ID', 'Date', 'Sender', 'Recipients', 'Content', 'Reactions'])
     
-    # Writing Rows
     for s in shoutouts:
         recipients_str = ", ".join([r.name for r in s.recipients])
         writer.writerow([s.id, s.created_at, s.sender.name, recipients_str, s.content, len(s.reactions)])
