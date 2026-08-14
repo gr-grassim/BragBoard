@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import { Mail, Briefcase, Search } from 'lucide-react';
 
 export default function UserDirectory({ departmentFilter }) {
@@ -15,21 +16,13 @@ export default function UserDirectory({ departmentFilter }) {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            let url = 'http://127.0.0.1:8000/users/';
+            const params = {};
             if (departmentFilter && departmentFilter !== 'All Departments') {
-                url += `?department=${encodeURIComponent(departmentFilter)}`;
+                params.department = departmentFilter;
             }
 
-            const response = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch users');
-            
-            const data = await response.json();
-            setUsers(data);
+            const response = await api.get('/users/', { params });
+            setUsers(response.data);
         } catch (err) {
             console.error(err);
             setError('Could not load user directory.');
