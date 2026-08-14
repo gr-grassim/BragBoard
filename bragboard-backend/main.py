@@ -7,7 +7,7 @@ import io
 
 from jose import jwt, JWTError
 from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form
-from fastapi.responses import StreamingResponse # NEW: To download files
+from fastapi.responses import StreamingResponse 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles 
@@ -17,14 +17,18 @@ from passlib.context import CryptContext
 import models, schemas
 from database import engine, get_db
 
+# Dynamic Base URL for image uploads (Render automatically provides RENDER_EXTERNAL_URL)
+BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
+
 # Creation of Tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# FIX 1: Explicitly pass ["*"] to allow all domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -97,7 +101,9 @@ def upload_avatar(avatar: UploadFile = File(...), db: Session = Depends(get_db),
     safe_filename = f"avatar_{current_user.id}_{datetime.now().timestamp()}.jpg"
     file_location = f"static/images/{safe_filename}"
     with open(file_location, "wb+") as file_object: shutil.copyfileobj(avatar.file, file_object)
-    current_user.avatar_path = f"http://localhost:8000/{file_location}"
+    
+    # FIX 2: Use dynamic BASE_URL instead of localhost
+    current_user.avatar_path = f"{BASE_URL}/{file_location}"
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
@@ -118,7 +124,9 @@ def create_shoutout(content: str = Form(...), receiver_ids: str = Form(...), ima
         safe_filename = f"{datetime.now().timestamp()}_{image.filename}"
         file_location = f"static/images/{safe_filename}"
         with open(file_location, "wb+") as file_object: shutil.copyfileobj(image.file, file_object)
-        image_url = f"http://localhost:8000/{file_location}"
+        
+        # FIX 2: Use dynamic BASE_URL instead of localhost
+        image_url = f"{BASE_URL}/{file_location}"
     
     recipient_ids = [int(id) for id in receiver_ids.split(",") if id.strip()]
     recipients = db.query(models.User).filter(models.User.id.in_(recipient_ids)).all()
