@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { User, Lock, Mail, Briefcase, Sun, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 
 export default function AuthPage() {
   const { login } = useAuth(); 
-  
+   
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '', 
@@ -26,48 +27,30 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         // --- Login part ---
-        const response = await fetch('http://127.0.0.1:8000/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-             email: formData.email,
-             password: formData.password
-          }),
+        const response = await api.post('/login', {
+           email: formData.email,
+           password: formData.password
         });
 
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.detail || 'Login failed. Check your credentials.');
-        }
-
-        const data = await response.json();
-        login(data.access_token);
+        login(response.data.access_token);
 
       } else {
         // --- Registration part ---
-        const response = await fetch('http://127.0.0.1:8000/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: formData.username,
-            email: formData.email,
-            password: formData.password,
-            department: formData.department,
-            role: 'employee'
-          }),
+        await api.post('/register', {
+          name: formData.username,
+          email: formData.email,
+          password: formData.password,
+          department: formData.department,
+          role: 'employee'
         });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.detail || 'Registration failed');
-        }
 
         alert('Registration successful! Please log in.');
         setIsLogin(true);
       }
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      const errorMessage = err.response?.data?.detail || err.message || 'Authentication failed';
+      setError(errorMessage);
     }
   };
 
