@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Send, User, Image as ImageIcon, Trash2 } from 'lucide-react'; 
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 
 export default function CreateShoutoutModal({ onClose, onShoutoutCreated }) {
     const { token } = useAuth();
@@ -16,11 +17,8 @@ export default function CreateShoutoutModal({ onClose, onShoutoutCreated }) {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await fetch('http://127.0.0.1:8000/users/', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const data = await response.json();
-                setUsers(data);
+                const response = await api.get('/users/');
+                setUsers(response.data);
             } catch (error) {
                 console.error("Failed to load users", error);
             }
@@ -63,25 +61,19 @@ export default function CreateShoutoutModal({ onClose, onShoutoutCreated }) {
                 formData.append('image', imageFile);
             }
 
-            const response = await fetch('http://127.0.0.1:8000/shoutouts', {
-                method: 'POST',
+            await api.post('/shoutouts', formData, {
                 headers: {
-                    // Do NOT set Content-Type header manually when using FormData
-                    // The browser sets it automatically with the boundary
-                    Authorization: `Bearer ${token}`
-                },
-                body: formData
+                    // Let Axios/Browser handle multipart boundary automatically
+                    'Content-Type': 'multipart/form-data',
+                }
             });
 
-            if (response.ok) {
-                onShoutoutCreated(); 
-                onClose();
-            } else {
-                const err = await response.json();
-                alert(err.detail || "Failed to send");
-            }
+            onShoutoutCreated(); 
+            onClose();
         } catch (error) {
             console.error("Failed to post shoutout", error);
+            const errorMsg = error.response?.data?.detail || "Failed to send";
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
