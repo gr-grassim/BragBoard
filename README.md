@@ -2,6 +2,8 @@
 
 ![BragBoard Banner](https://via.placeholder.com/1200x400?text=BragBoard+-+Employee+Appreciation+Platform)
 
+LIVE DEMO : https://bragboard-lyart.vercel.app/
+
 > A modern, gamified peer-to-peer recognition platform designed to boost team morale, foster workplace culture, and track employee engagement through interactive shout-outs and leaderboards.
 
 ---
